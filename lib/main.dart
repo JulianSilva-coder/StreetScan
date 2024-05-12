@@ -18,7 +18,9 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatelessWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  final TextEditingController cedulaController = TextEditingController();
+
+  MyHomePage({Key? key}) : super(key: key); // Removed const keyword
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +55,7 @@ class MyHomePage extends StatelessWidget {
             Column(
               children: [
                 TextField(
+                  controller: cedulaController,
                   decoration: InputDecoration(
                     labelText: "Cedula",
                     border: OutlineInputBorder(
@@ -67,7 +70,7 @@ class MyHomePage extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    _obtenerUbicacionYIrAInicio(context);
+                    _obtenerUbicacionYIrAInicio(context, cedulaController.text);
                   },
                   child: Text("Registrar"),
                   style: ElevatedButton.styleFrom(
@@ -87,24 +90,48 @@ class MyHomePage extends StatelessWidget {
     );
   }
 
-  void _obtenerUbicacionYIrAInicio(BuildContext context) async {
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+  void _obtenerUbicacionYIrAInicio(BuildContext context, String cedula) async {
+    // Validar longitud de la cédula
+    if (cedula.length >= 7 && cedula.length <= 10) {
+      // Obtener la ubicación
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    double latitud = position.latitude;
-    double longitud = position.longitude;
+      double latitud = position.latitude;
+      double longitud = position.longitude;
 
-    int latitud12Bits = ((latitud + 90) / 180 * 4095).round();
-    int longitud12Bits = ((longitud + 180) / 360 * 4095).round();
+      int latitud12Bits = ((latitud + 90) / 180 * 4095).round();
+      int longitud12Bits = ((longitud + 180) / 360 * 4095).round();
 
-    print("Ubicación en 12 bits:");
-    print("Latitud: $latitud12Bits");
-    print("Longitud: $longitud12Bits");
+      print("Ubicación en 12 bits:");
+      print("Latitud: $latitud12Bits");
+      print("Longitud: $longitud12Bits");
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => Inicio(latitud: latitud, longitud: longitud)),
-    );
+      // Navegar a la página de inicio
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => Inicio(latitud: latitud, longitud: longitud)),
+      );
+    } else {
+      // Mostrar mensaje de error
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Error"),
+            content: Text("Debe ingresar un número de cédula válido (entre 7 y 10 dígitos)."),
+            actions: <Widget>[
+              TextButton(
+                child: Text("OK"),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }

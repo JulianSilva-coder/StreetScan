@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:gallery_saver/gallery_saver.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Inicio extends StatelessWidget {
   final double latitud;
@@ -17,71 +16,103 @@ class Inicio extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(latitud, longitud),
-              zoom: 12,
+          // Fondo con la imagen
+          Positioned(
+            top: 100, // Ajusta la posición vertical según necesites
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 200, // Altura específica para la imagen de fondo
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/carretera.gif'),
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-            onMapCreated: (GoogleMapController controller) {
-              // Aquí puedes agregar lógica adicional cuando se crea el mapa, si es necesario
-            },
-            // Puedes agregar más opciones del mapa aquí según tus necesidades
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Align(
               alignment: Alignment.bottomCenter,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: Color.fromARGB(255, 223, 223, 223),
-                            title: Text(
-                              "Mensaje de Registro",
-                              style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                            ),
-                            content: Text(
-                              "¡Hola! Este es un mensaje de registro. Latitud: $latitud, Longitud: $longitud",
-                              style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: Text(
-                                  "Cerrar",
-                                  style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child: Text("Registrar Ubicacion"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Ingrese su mensaje',
                     ),
                   ),
-                  SizedBox(width: 20),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                backgroundColor: Color.fromARGB(255, 223, 223, 223),
+                                title: Text(
+                                  "Mensaje de Registro",
+                                  style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
+                                ),
+                                content: Text(
+                                  "¡Hola! Este es un mensaje de registro. Latitud: $latitud, Longitud: $longitud",
+                                  style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: Text(
+                                      "Cerrar",
+                                      style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        child: Text("Registrar Ubicacion"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          _tomarFotoYGuardar(context);
+                        },
+                        child: Text("Tomar Fotografia"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      _tomarFotoYGuardar(context);
+                      // Aquí puedes manejar la lógica para enviar el mensaje
+                      // Por ahora, lo dejaremos vacío
                     },
-                    child: Text("Tomar Fotografia"),
+                    child: Text("Enviar"),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       shape: RoundedRectangleBorder(
