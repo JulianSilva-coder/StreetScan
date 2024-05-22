@@ -1,12 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:gallery_saver/gallery_saver.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class Inicio extends StatelessWidget {
-  final double latitud;
-  final double longitud;
+class Inicio extends StatefulWidget {
+  final String numeroCedula; // Agregar el campo para almacenar el número de cédula
 
-  const Inicio({Key? key, required this.latitud, required this.longitud}) : super(key: key);
+  const Inicio({Key? key, required this.numeroCedula}) : super(key: key);
+
+  @override
+  _InicioState createState() => _InicioState();
+}
+
+class _InicioState extends State<Inicio> {
+  Position? _position;
+  XFile? _image;
+  String? _mensaje;
+  int _numeroNotificacion = 1;
+
+  set numeroNotificacion(int value) {
+    _numeroNotificacion = value;
+  }
+
+  int get numeroNotificacion => _numeroNotificacion;
 
   @override
   Widget build(BuildContext context) {
@@ -16,13 +34,12 @@ class Inicio extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          // Fondo con la imagen
           Positioned(
-            top: 100, // Ajusta la posición vertical según necesites
+            top: 100,
             left: 0,
             right: 0,
             child: Container(
-              height: 200, // Altura específica para la imagen de fondo
+              height: 200,
               decoration: BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage('assets/carretera.gif'),
@@ -42,6 +59,11 @@ class Inicio extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: 'Ingrese su mensaje',
                     ),
+                    onChanged: (value) {
+                      setState(() {
+                        _mensaje = value;
+                      });
+                    },
                   ),
                   SizedBox(height: 20),
                   Row(
@@ -49,35 +71,9 @@ class Inicio extends StatelessWidget {
                     children: [
                       ElevatedButton(
                         onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                backgroundColor: Color.fromARGB(255, 223, 223, 223),
-                                title: Text(
-                                  "Mensaje de Registro",
-                                  style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                ),
-                                content: Text(
-                                  "¡Hola! Este es un mensaje de registro. Latitud: $latitud, Longitud: $longitud",
-                                  style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: Text(
-                                      "Cerrar",
-                                      style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0)),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
+                          _registrarUbicacion(context);
                         },
-                        child: Text("Registrar Ubicacion"),
+                        child: Text("Registrar Ubicación"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber,
                           foregroundColor: Colors.white,
@@ -92,7 +88,7 @@ class Inicio extends StatelessWidget {
                         onPressed: () {
                           _tomarFotoYGuardar(context);
                         },
-                        child: Text("Tomar Fotografia"),
+                        child: Text("Tomar Fotografía"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber,
                           foregroundColor: Colors.white,
@@ -107,8 +103,7 @@ class Inicio extends StatelessWidget {
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      // Aquí puedes manejar la lógica para enviar el mensaje
-                      // Por ahora, lo dejaremos vacío
+                      _enviarNotificacion(context);
                     },
                     child: Text("Enviar"),
                     style: ElevatedButton.styleFrom(
@@ -129,6 +124,46 @@ class Inicio extends StatelessWidget {
     );
   }
 
+  void _registrarUbicacion(BuildContext context) async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Los servicios de localización están deshabilitados.')),
+      );
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Permisos de localización denegados.')),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Permisos de localización permanentemente denegados.')),
+      );
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    setState(() {
+      _position = position;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ubicación: ${position.latitude}, ${position.longitude}')),
+    );
+  }
+
   void _tomarFotoYGuardar(BuildContext context) async {
     final cameras = await availableCameras();
     final firstCamera = cameras.first;
@@ -141,6 +176,10 @@ class Inicio extends StatelessWidget {
 
     if (fotoCapturada != null) {
       await GallerySaver.saveImage(fotoCapturada.path);
+      setState(() {
+        _image = fotoCapturada;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Foto guardada en la galería'),
@@ -148,6 +187,41 @@ class Inicio extends StatelessWidget {
       );
     }
   }
+
+  void _enviarNotificacion(BuildContext context) async {
+  if (_position == null || _image == null || _mensaje == null || _mensaje!.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Debe registrar ubicación, tomar foto y escribir un mensaje')),
+    );
+    return;
+  }
+
+  final url = Uri.parse('http://192.168.1.6:5000/notificacion');
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({
+      'numero_notificacion': numeroNotificacion,
+      'numero_cedula': widget.numeroCedula, // Accediendo al valor de numeroCedula desde el widget Inicio
+      'comentarios': _mensaje,
+      'ruta_fotografia': _image!.path,
+      'coordenadas': '${_position!.latitude},${_position!.longitude}',
+    }),
+  );
+
+  if (response.statusCode == 200) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Notificación enviada correctamente')),
+    );
+    numeroNotificacion++;
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error al enviar la notificación')),
+    );
+  }
+}
 }
 
 class CameraScreen extends StatefulWidget {
@@ -166,48 +240,48 @@ class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = CameraController(
-      widget.camera,
-      ResolutionPreset.medium,
-    );
-    _initializeControllerFuture = _controller.initialize();
-  }
+@override
+void initState() {
+  super.initState();
+  _controller = CameraController(
+    widget.camera,
+    ResolutionPreset.medium,
+  );
+  _initializeControllerFuture = _controller.initialize();
+}
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  _controller.dispose();
+  super.dispose();
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Tomar Fotografia')),
-      body: FutureBuilder<void>(
-        future: _initializeControllerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return CameraPreview(_controller);
-          } else {
-            return Center(child: CircularProgressIndicator());
-          }
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          try {
-            await _initializeControllerFuture;
-            final image = await _controller.takePicture();
-            Navigator.pop(context, image);
-          } catch (e) {
-            print(e);
-          }
-        },
-        child: Icon(Icons.camera),
-      ),
-    );
-  }
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: Text('Tomar Fotografía')),
+    body: FutureBuilder<void>(
+      future: _initializeControllerFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return CameraPreview(_controller);
+        } else {
+          return Center(child: CircularProgressIndicator());
+        }
+      },
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () async {
+        try {
+          await _initializeControllerFuture;
+          final image = await _controller.takePicture();
+          Navigator.pop(context, image);
+        } catch (e) {
+          print(e);
+        }
+      },
+      child: Icon(Icons.camera),
+    ),
+  );
+}
 }

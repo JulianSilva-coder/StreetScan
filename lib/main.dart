@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'inicio.dart'; 
+import 'package:http/http.dart' as http;
+import 'inicio.dart';
 
 void main() => runApp(MyApp());
 
@@ -17,10 +18,12 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// ignore: must_be_immutable
 class MyHomePage extends StatelessWidget {
   final TextEditingController cedulaController = TextEditingController();
+  int numeroNotificacion = 1; 
 
-  MyHomePage({Key? key}) : super(key: key); // Removed const keyword
+  MyHomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +73,7 @@ class MyHomePage extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    _obtenerUbicacionYIrAInicio(context, cedulaController.text);
+                    _registrarCedula(context, cedulaController.text);
                   },
                   child: Text("Registrar"),
                   style: ElevatedButton.styleFrom(
@@ -90,31 +93,44 @@ class MyHomePage extends StatelessWidget {
     );
   }
 
-  void _obtenerUbicacionYIrAInicio(BuildContext context, String cedula) async {
-    // Validar longitud de la cédula
+  void _registrarCedula(BuildContext context, String cedula) async {
     if (cedula.length >= 7 && cedula.length <= 10) {
-      // Obtener la ubicación
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+      
+      final response = await http.post(
+        Uri.parse('http://192.168.1.6:5000/registro'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'numero_cedula': cedula,
+        }),
       );
 
-      double latitud = position.latitude;
-      double longitud = position.longitude;
-
-      int latitud12Bits = ((latitud + 90) / 180 * 4095).round();
-      int longitud12Bits = ((longitud + 180) / 360 * 4095).round();
-
-      print("Ubicación en 12 bits:");
-      print("Latitud: $latitud12Bits");
-      print("Longitud: $longitud12Bits");
-
-      // Navegar a la página de inicio
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => Inicio(latitud: latitud, longitud: longitud)),
-      );
+      if (response.statusCode == 200) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => Inicio(numeroCedula: cedula)),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Error"),
+              content: Text("Error al registrar la cédula. Inténtalo de nuevo más tarde."),
+              actions: <Widget>[
+                TextButton(
+                  child: Text("OK"),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      }
     } else {
-      // Mostrar mensaje de error
       showDialog(
         context: context,
         builder: (BuildContext context) {
